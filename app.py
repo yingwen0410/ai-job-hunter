@@ -37,38 +37,59 @@ def datetime_handler(obj):
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 # --- API 路由 ---
-@app.route('/api/jobs', methods=['GET'])
-def api_get_jobs():
+@app.route('/api/jobs')
+def get_jobs():
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 10, type=int)
+    keyword = request.args.get('keyword', '')
+    status = request.args.get('status', '')  # 新增：获取状态参数
+    
+    jobs, total = database.get_all_jobs(page=page, limit=limit, keyword=keyword, status=status)
+    
+    if jobs is None:
+        return jsonify({'error': '获取职缺列表失败'}), 500
+        
+    return jsonify({
+        'jobs': jobs,
+        'page': page,
+        'limit': limit,
+        'total_jobs_count': total,
+        'total_pages': (total + limit - 1) // limit
+    })
+
+@app.route('/api/jobs/<int:job_id>/status', methods=['POST'])
+def api_update_job_status(job_id):
     """
-    提供所有職缺資料的 API 接口，支持分頁。
+    更新指定職缺的狀態。
     """
     try:
-        # 從請求中獲取分頁參數，並提供預設值
-        page = int(request.args.get('page', 1))  # 預設頁碼為 1
-        limit = int(request.args.get('limit', 10)) # 預設每頁顯示 10 筆
+        data = request.get_json()
+        new_status = data.get('status')
 
-        jobs, total_jobs_count = database.get_all_jobs(page, limit)
-        
-        if jobs is not None:
-            # 計算總頁數
-            total_pages = math.ceil(total_jobs_count / limit) if limit > 0 else 0
+        if not new_status:
+            return jsonify({"error": "缺少新的狀態參數"}), 400
 
-            response_data = {
-                'jobs': jobs,
-                'page': page,
-                'limit': limit,
-                'total_jobs_count': total_jobs_count,
-                'total_pages': total_pages
-            }
-            json_str = json.dumps(response_data, ensure_ascii=False, default=datetime_handler, indent=2)
-            return Response(json_str, mimetype='application/json; charset=utf-8')
+        if database.update_job_status(job_id, new_status):
+            return jsonify({"message": "職缺狀態更新成功"}), 200
         else:
-            print("錯誤：從資料庫獲取資料失敗 (回傳值為 None)。")
-            return jsonify({"error": "無法從資料庫獲取資料"}), 500
-            
+            return jsonify({"error": "職缺狀態更新失敗或未找到職缺"}), 404
     except Exception as e:
-        print(f"處理 /api/jobs 請求時發生未知錯誤: {e}")
+        print(f"處理 /api/jobs/{job_id}/status 請求時發生錯誤: {e}")
         return jsonify({"error": f"伺服器發生未知錯誤: {str(e)}"}), 500
+
+@app.route('/api/last-update', methods=['GET'])
+def get_last_update():
+    try:
+        last_update = database.get_last_update_time()
+        return jsonify({
+            'success': True,
+            'last_update': last_update
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # --- 自動化排程設定 ---
 def scheduled_job():

@@ -86,6 +86,9 @@ def scrape_104_jobs(config, keyword, page_limit):
             
             for job in jobs:
                 try:
+                    # 调试信息：打印原始 API 响应中的行业字段
+                    print(f"原始行業欄位 (coIndustryDesc): {job.get('coIndustryDesc', '')}")
+                    
                     job_data = {
                         'title': job.get('jobName', ''),
                         'company_name': job.get('custName', ''),

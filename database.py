@@ -74,12 +74,31 @@ def init_db():
                 job_url VARCHAR(512) NOT NULL UNIQUE,
                 source_website VARCHAR(100),
                 posting_date VARCHAR(100),
-                crawled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                status VARCHAR(50) DEFAULT '未關注',
+                crawled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                industry VARCHAR(100)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
             cursor.execute(create_table_query)
             print("資料表 'jobs' 已確認存在。")
 
+            try:
+                cursor.execute("ALTER TABLE jobs ADD COLUMN status VARCHAR(50) DEFAULT '未關注' AFTER posting_date")
+                print("成功新增 status 欄位")
+            except Error as e:
+                if "Duplicate column name" in str(e):
+                    print("status 欄位已存在")
+                else:
+                    raise e
+            
+            try:
+                cursor.execute("ALTER TABLE jobs ADD COLUMN industry VARCHAR(100) AFTER crawled_at")
+                print("成功新增 industry 欄位")
+            except Error as e:
+                if "Duplicate column name" in str(e):
+                    print("industry 欄位已存在")
+                else:
+                    raise e
             
             db_connection.commit()
             return True
@@ -95,13 +114,24 @@ def init_db():
 def add_job(job_data):
     """
     新增一筆職缺資料到資料庫中。
+    如果職缺已存在 (依 job_url 判斷)，則更新其資料。
     """
     db_connection = None
     cursor = None
     
     query = """
-    INSERT IGNORE INTO jobs (title, company_name, location, experience, education, salary_range, job_url, source_website, posting_date)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    INSERT INTO jobs (title, company_name, location, experience, education, salary_range, job_url, source_website, posting_date, status, industry)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        company_name = VALUES(company_name),
+        location = VALUES(location),
+        experience = VALUES(experience),
+        education = VALUES(education),
+        salary_range = VALUES(salary_range),
+        source_website = VALUES(source_website),
+        posting_date = VALUES(posting_date),
+        industry = VALUES(industry)
     """
     values = (
         job_data.get('title'),
@@ -112,7 +142,9 @@ def add_job(job_data):
         job_data.get('salary_range'),
         job_data.get('job_url'),
         job_data.get('source_website'),
-        job_data.get('posting_date')
+        job_data.get('posting_date'),
+        job_data.get('status', '未關注'),
+        job_data.get('industry', '')
     )
 
     try:
@@ -121,12 +153,10 @@ def add_job(job_data):
             cursor = db_connection.cursor()
             cursor.execute(query, values)
             db_connection.commit()
-            if cursor.rowcount > 0:
-                return True
-            else:
-                return False
+            # rowcount > 0 表示有新增或更新，rowcount == 0 表示沒有改變 (例如，所有值都相同)
+            return True
     except Error as e:
-        print(f"新增職缺時發生錯誤: {e}")
+        print(f"新增或更新職缺時發生錯誤: {e}")
         return False
     finally:
         if cursor:
@@ -134,39 +164,105 @@ def add_job(job_data):
         if db_connection and db_connection.is_connected():
             db_connection.close()
 
-def get_all_jobs(page=1, limit=10):
-    """從資料庫中獲取所有職缺資料，並支持分頁。"""
+def get_all_jobs(page=1, limit=10, keyword=None, status=None):
+    """
+    獲取所有職缺資料，支持分頁、關鍵字搜尋和狀態篩選。
+    
+    Args:
+        page (int): 當前頁碼，從 1 開始
+        limit (int): 每頁顯示數量
+        keyword (str): 搜尋關鍵字
+        status (str): 職缺狀態篩選
+        
+    Returns:
+        tuple: (職缺列表, 總數量)
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)  # 使用字典游标
+        
+        # 構建 WHERE 子句
+        where_clauses = []
+        params = []
+        
+        if keyword:
+            where_clauses.append("(title LIKE %s OR company_name LIKE %s)")
+            params.extend([f'%{keyword}%', f'%{keyword}%'])
+            
+        if status:
+            where_clauses.append("status = %s")
+            params.append(status)
+            
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        # 獲取總數
+        count_sql = f"SELECT COUNT(*) as total_count FROM jobs WHERE {where_sql}"
+        cursor.execute(count_sql, params)
+        total = cursor.fetchone()['total_count']
+        
+        # 獲取分頁數據
+        offset = (page - 1) * limit
+        sql = f"""
+            SELECT * FROM jobs 
+            WHERE {where_sql}
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        
+        cursor.execute(sql, params)
+        jobs = cursor.fetchall()
+        
+        return jobs, total
+        
+    except Exception as e:
+        print(f"獲取職缺列表時發生錯誤: {e}")
+        return None, 0
+    finally:
+        if conn:
+            conn.close()
+
+def update_job_status(job_id, new_status):
+    """
+    更新單一職缺的狀態。
+    """
     db_connection = None
     cursor = None
-    jobs = []
-    total_jobs_count = 0
     try:
         db_connection = get_db_connection()
         if db_connection.is_connected():
-            cursor = db_connection.cursor(dictionary=True) # 以字典形式返回结果
-
-            # 獲取總職缺數量
-            count_query = "SELECT COUNT(*) AS total_count FROM jobs"
-            cursor.execute(count_query)
-            total_jobs_count = cursor.fetchone()['total_count']
-
-            # 計算 OFFSET
-            offset = (page - 1) * limit
-
-            # 獲取分頁後的職缺資料
-            jobs_query = "SELECT id, title, company_name, location, experience, education, salary_range, job_url, source_website, posting_date, crawled_at FROM jobs LIMIT %s OFFSET %s"
-            cursor.execute(jobs_query, (limit, offset))
-            jobs = cursor.fetchall()
-            
-            return jobs, total_jobs_count
+            cursor = db_connection.cursor()
+            query = "UPDATE jobs SET status = %s WHERE id = %s"
+            cursor.execute(query, (new_status, job_id))
+            db_connection.commit()
+            if cursor.rowcount > 0:
+                print(f"成功更新職缺 ID {job_id} 的狀態為 {new_status}")
+                return True
+            else:
+                print(f"未找到職缺 ID {job_id} 或狀態未改變")
+                return False
     except Error as e:
-        print(f"獲取所有職缺時發生錯誤: {e}")
-        return None, 0
+        print(f"更新職缺狀態時發生錯誤: {e}")
+        return False
     finally:
         if cursor:
             cursor.close()
         if db_connection and db_connection.is_connected():
             db_connection.close()
+
+def get_last_update_time():
+    """获取最后一次爬虫更新的时间"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(crawled_at) FROM jobs")
+        last_update = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        return last_update.strftime('%Y-%m-%d %H:%M:%S') if last_update else None
+    except Exception as e:
+        print(f"获取最后更新时间时发生错误: {str(e)}")
+        return None
 
 def main():
     """主執行函式，用於獨立執行此腳本時進行初始化。"""
