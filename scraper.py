@@ -1,22 +1,20 @@
 """
 網頁爬蟲模組 (Web Scraper) - Requests 版
 
-本模組使用 Requests 搭配 BeautifulSoup 來爬取求職網站。
+本模組使用 Requests 來爬取求職網站。
 主要功能:
 1. 透過 Requests 發送 HTTP 請求獲取資料。
-2. 使用 BeautifulSoup 解析 HTML 內容。
+2. 解析 JSON 內容。
 3. 清洗並結構化爬取到的資料。
 4. 將結構化資料傳遞給 database 模組進行儲存。
 """
 
 import time
 import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, parse_qs
+
 import database
 import json
 
-print("--- 已成功匯入所有模組 ---")
 
 # --- 爬蟲設定檔 ---
 TARGET_CONFIG = {
@@ -29,9 +27,7 @@ TARGET_CONFIG = {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
         },
-        'page_limit': 3,
         'params': {
-            'keyword': 'AI 工程師',
             'order': '15',
             'page': 1,
             'mode': 's',
@@ -46,7 +42,19 @@ TARGET_CONFIG = {
 
 print("--- TARGET_CONFIG 設定檔已載入 ---")
 
-def scrape_104_jobs(config):
+def convert_experience(exp_code):
+    """將工作經歷代碼轉換為可讀文本"""
+    exp_map = {
+        '01': '無經驗',
+        '02': '1年以下',
+        '03': '1-3年',
+        '04': '3-5年',
+        '05': '5-10年',
+        '06': '10年以上'
+    }
+    return exp_map.get(exp_code, '經歷不拘')
+
+def scrape_104_jobs(config, keyword, page_limit):
     """
     專門爬取 104 人力銀行職缺的函式 (Requests 版)。
     """
@@ -54,7 +62,9 @@ def scrape_104_jobs(config):
     job_count = 0
     session = requests.Session()
     
-    for page in range(1, config['page_limit'] + 1):
+    config['params']['keyword'] = keyword
+
+    for page in range(1, page_limit + 1):
         print(f"正在爬取第 {page} 頁...")
         config['params']['page'] = page
         page_job_count = 0
@@ -79,12 +89,14 @@ def scrape_104_jobs(config):
                     job_data = {
                         'title': job.get('jobName', ''),
                         'company_name': job.get('custName', ''),
-                        'location': job.get('area', '未提供'),
-                        'experience': job.get('period', '未提供'),
-                        'education': job.get('edu', '未提供'),
-                        'salary_range': job.get('salary', '面議'),
-                        'job_url': f"https://www.104.com.tw/job/{job.get('jobNo', '')}",
-                        'source_website': '104'
+                        'location': f"{job.get('jobAddrNoDesc', '')}{job.get('jobAddress', '')}".strip(),
+                        'experience': convert_experience(job.get('period', '')),
+                        'education': job.get('optionEdu', '未提供'),
+                        'salary_range': job.get('salaryDesc', '面議'),
+                        'job_url': f"https:{job.get('link', {}).get('job', '')}",
+                        'source_website': '104',
+                        'posting_date': job.get('appearDate', ''),
+                        'industry': job.get('coIndustryDesc', '')
                     }
                     
                     if database.add_job(job_data):
@@ -111,19 +123,14 @@ def scrape_104_jobs(config):
     print(f"104 人力銀行爬取完成。")
     return job_count
 
-def scrape_all_jobs():
+def scrape_all_jobs(keyword='AI 工程師', page_limit=3):
     """主執行函式。"""
     print("--- 已進入 scrape_all_jobs 函式 ---")
     total_new_jobs = 0
     if '104' in TARGET_CONFIG:
-        total_new_jobs += scrape_104_jobs(TARGET_CONFIG['104'])
+        total_new_jobs += scrape_104_jobs(TARGET_CONFIG['104'], keyword, page_limit)
     print(f"\n所有爬取任務完成，本次共新增 {total_new_jobs} 筆職缺。")
 
 if __name__ == '__main__':
-    print("--- 腳本即將進入 if __name__ == '__main__' 主程式區塊 ---")
     scrape_all_jobs()
     print("--- 主程式區塊執行完畢 ---")
-
-
-
-

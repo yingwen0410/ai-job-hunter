@@ -17,7 +17,6 @@ from mysql.connector import Error
 import os
 from dotenv import load_dotenv
 
-print("--- 腳本開始執行，正在載入環境變數... ---")
 load_dotenv()
 
 DB_CONFIG = {
@@ -30,17 +29,13 @@ DB_CONFIG = {
 if not DB_CONFIG['password']:
     raise ValueError("錯誤：資料庫密碼未在 .env 檔案中設定 (DB_PASSWORD)")
 
-print("--- 準備建立資料庫連接池... ---")
 try:
     connection_pool = pooling.MySQLConnectionPool(pool_name="job_pool",
                                                   pool_size=5,
                                                   **DB_CONFIG)
-    print("資料庫連接池建立成功。")
 except Error as e:
     print(f"建立資料庫連接池時發生錯誤: {e}")
     connection_pool = None
-
-print("--- 所有函式定義完成 ---")
 
 def get_db_connection():
     """從連接池中取得一個資料庫連線。"""
@@ -78,30 +73,13 @@ def init_db():
                 salary_range VARCHAR(100),
                 job_url VARCHAR(512) NOT NULL UNIQUE,
                 source_website VARCHAR(100),
+                posting_date VARCHAR(100),
                 crawled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
             cursor.execute(create_table_query)
             print("資料表 'jobs' 已確認存在。")
 
-            # 檢查並新增欄位
-            try:
-                cursor.execute("ALTER TABLE jobs ADD COLUMN experience VARCHAR(100) AFTER location")
-                print("成功新增 experience 欄位")
-            except Error as e:
-                if "Duplicate column name" in str(e):
-                    print("experience 欄位已存在")
-                else:
-                    raise e
-
-            try:
-                cursor.execute("ALTER TABLE jobs ADD COLUMN education VARCHAR(100) AFTER experience")
-                print("成功新增 education 欄位")
-            except Error as e:
-                if "Duplicate column name" in str(e):
-                    print("education 欄位已存在")
-                else:
-                    raise e
             
             db_connection.commit()
             return True
@@ -122,8 +100,8 @@ def add_job(job_data):
     cursor = None
     
     query = """
-    INSERT IGNORE INTO jobs (title, company_name, location, experience, education, salary_range, job_url, source_website)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    INSERT IGNORE INTO jobs (title, company_name, location, experience, education, salary_range, job_url, source_website, posting_date)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
     values = (
         job_data.get('title'),
@@ -133,7 +111,8 @@ def add_job(job_data):
         job_data.get('education'),
         job_data.get('salary_range'),
         job_data.get('job_url'),
-        job_data.get('source_website')
+        job_data.get('source_website'),
+        job_data.get('posting_date')
     )
 
     try:
@@ -143,10 +122,8 @@ def add_job(job_data):
             cursor.execute(query, values)
             db_connection.commit()
             if cursor.rowcount > 0:
-                print(f"成功新增職缺: {job_data.get('title')}")
                 return True
             else:
-                print(f"職缺已存在，略過: {job_data.get('title')}")
                 return False
     except Error as e:
         print(f"新增職缺時發生錯誤: {e}")
@@ -157,21 +134,47 @@ def add_job(job_data):
         if db_connection and db_connection.is_connected():
             db_connection.close()
 
-def get_all_jobs():
-    """從資料庫中獲取所有職缺資料。"""
-    # 此函式暫不需修改
-    pass
+def get_all_jobs(page=1, limit=10):
+    """從資料庫中獲取所有職缺資料，並支持分頁。"""
+    db_connection = None
+    cursor = None
+    jobs = []
+    total_jobs_count = 0
+    try:
+        db_connection = get_db_connection()
+        if db_connection.is_connected():
+            cursor = db_connection.cursor(dictionary=True) # 以字典形式返回结果
+
+            # 獲取總職缺數量
+            count_query = "SELECT COUNT(*) AS total_count FROM jobs"
+            cursor.execute(count_query)
+            total_jobs_count = cursor.fetchone()['total_count']
+
+            # 計算 OFFSET
+            offset = (page - 1) * limit
+
+            # 獲取分頁後的職缺資料
+            jobs_query = "SELECT id, title, company_name, location, experience, education, salary_range, job_url, source_website, posting_date, crawled_at FROM jobs LIMIT %s OFFSET %s"
+            cursor.execute(jobs_query, (limit, offset))
+            jobs = cursor.fetchall()
+            
+            return jobs, total_jobs_count
+    except Error as e:
+        print(f"獲取所有職缺時發生錯誤: {e}")
+        return None, 0
+    finally:
+        if cursor:
+            cursor.close()
+        if db_connection and db_connection.is_connected():
+            db_connection.close()
 
 def main():
     """主執行函式，用於獨立執行此腳本時進行初始化。"""
-    print("--- 準備執行 main 函式 ---")
     print("正在執行資料庫初始化...")
     if init_db():
         print("資料庫初始化成功。")
     else:
         print("資料庫初始化失敗，請檢查 .env 設定或資料庫服務狀態。")
-    print("--- main 函式執行完畢 ---")
 
 if __name__ == '__main__':
-    print("--- 腳本執行中，即將進入 if __name__ == '__main__' 區塊 ---")
     main()
