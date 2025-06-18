@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 求職小幫手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #EFEFEF; /* Light Teal */
+            color: #1f2937; /* Dark Gray */
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        .header {
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 1px solid #E0EBF0;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .logo {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(to bottom right, #345485, #4A6D9C);
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-text h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #345485;
+            margin: 0;
+        }
+
+        .header-text p {
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* gray-600 */
+            margin: 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 1rem;
+        }
+
+        .section-title {
+            margin-bottom: 2rem;
+        }
+
+        .section-title h2 {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: bold;
+            color: #345485;
+            margin-bottom: 0.5rem; /* mb-2 */
+        }
+
+        .section-title p {
+            color: #4b5563; /* gray-600 */
+        }
+
+        .update-time {
+            text-align: right;
+            font-size: 0.875rem; /* text-sm */
+            color: #6b7280; /* gray-500 */
+        }
+
+        .update-time span {
+            font-weight: 500; /* font-medium */
+        }
+
+        /* Search and Filter Section */
+        .filter-section {
+            background: linear-gradient(to right, #ffffff, #F4F8FA);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid #E0EBF0;
+        }
+
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem; /* space-y-6 equivalent */
+        }
+
+        @media (min-width: 640px) { /* sm */
+            .search-container {
+                flex-direction: row;
+                align-items: center;
+                gap: 1rem; /* sm:space-x-4 equivalent */
+            }
+        }
+
+        .search-input {
+            flex-grow: 1;
+            border: 1px solid #E0EBF0;
+            border-radius: 0.5rem;
+            padding: 0.625rem 1rem; /* px-4 py-2.5 */
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 84, 133, 0.15); /* focus:ring-2 focus:ring-[#B9D2D7] */
+        }
+
+        .button {
+            padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* shadow-sm */
+        }
+
+        .button:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* hover:shadow */
+        }
+
+        .button-primary {
+            background-color: #7296A4; /* bg-[#7296A4] */
+            color: white;
+        }
+
+        .button-primary:hover {
+            background-color: #5D7F8E; /* hover:bg-[#5D7F8E] */
+        }
+
+        .button-secondary {
+            background-color: #f3f4f6; /* bg-gray-100 */
+            color: #4b5563; /* text-gray-600 */
+            border: 1px solid #e5e7eb;
+        }
+
+        .button-secondary:hover {
+            background-color: #e5e7eb; /* hover:bg-gray-200 */
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem; /* gap-3 */
+            margin-top: 1rem;
+            margin-bottom: 1rem; /* To align with .search-container and .options-bottom */
+        }
+
+        .filter-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .filter-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .filter-button:not(.active) {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            border-color: #e5e7eb;
+        }
+
+        .filter-button:not(.active):hover {
+            background-color: #e5e7eb;
+        }
+
+        .options-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.5rem; /* pt-2 */
+            border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+        }
+
+        .options-bottom .info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* space-x-2 */
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* text-gray-600 */
+        }
+
+        .options-bottom .info span {
+            font-weight: 500; /* font-medium */
+        }
+
+        .options-bottom select {
+            border: 1px solid #E0EBF0;
+            border-radius: 0.5rem;
+            padding: 0.375rem 0.75rem; /* px-3 py-1.5 */
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .options-bottom select:focus {
+            box-shadow: 0 0 0 3px rgba(52, 84, 133, 0.15); /* focus:ring-2 focus:ring-[#B9D2D7] */
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            text-align: center;
+            padding: 5rem 0; /* py-20 */
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #345485;
+            border-radius: 50%;
+            width: 3rem; /* h-12 w-12 */
+            height: 3rem;
+            animation: spin 1s linear infinite;
+            margin: 0 auto; /* mx-auto */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-spinner p {
+            margin-top: 1rem; /* mt-4 */
+            color: #4b5563; /* text-gray-600 */
+        }
+
+        /* Error Message */
+        .error-message {
+            text-align: center;
+            padding: 1rem; /* px-4 py-3 */
+            color: #991b1b; /* text-red-700 */
+            background-color: #fee2e2; /* bg-red-50 */
+            border: 1px solid #fecaca; /* border border-red-200 */
+            border-radius: 0.5rem;
+            margin: 2rem 0; /* mt-8 */
+            position: relative;
+        }
+
+        .error-message strong {
+            font-weight: bold;
+        }
+
+        .error-message span {
+            display: block;
+        }
+
+        /* Jobs Grid */
+        .jobs-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .jobs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .jobs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Job Card */
+        .job-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .job-card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .job-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+            flex: 1;
+        }
+
+        .source-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 1rem;
+        }
+
+        .source-104 {
+            background-color: #e5f6fd;
+            color: #0284c7;
+        }
+
+        .source-1111 {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+
+        .job-company {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 1rem;
+        }
+
+        .job-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .job-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .job-detail i {
+            width: 1rem;
+            color: #9ca3af;
+        }
+
+        .job-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .status-select {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #374151;
+            font-size: 0.875rem;
+            cursor: pointer;
+            min-width: 100px;
+        }
+
+        .view-job-btn {
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .view-job-btn:hover {
+            background-color: #2563eb;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Add for vertical alignment */
+            gap: 0.5rem;
+            margin-top: 2rem;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center; /* Ensure alignment */
+        }
+
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #374151;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .pagination-button:not(.active):hover {
+            background-color: #e5e7eb;
+        }
+
+        .pagination-ellipsis {
+            padding: 0.5rem 0.25rem; /* Smaller padding for ellipsis */
+            color: #6b7280;
+        }
+
+        /* No Jobs Message */
+        .no-jobs-message {
+            text-align: center;
+            color: #6b7280; /* text-gray-500 */
+            margin-top: 2rem; /* Added some margin for spacing */
+            font-size: 1.125rem; /* Slightly larger text */
+            grid-column: 1 / -1; /* Make it span all columns in the grid */
+        }
+
+        /* Hidden Class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive adjustments for select */
+        @media (max-width: 639px) {
+            .options-bottom .info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+            .options-bottom select {
+                margin-top: 0.5rem;
+            }
+        }
+
+        .status-select {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .status-select.unfollowed {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .status-select.followed {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-select.applied {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-select.unsuitable {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-select:hover {
+            border-color: #9ca3af;
+        }
+
+        .status-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .filter-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .filter-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .filter-button:not(.active) {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            border-color: #e5e7eb;
+        }
+
+        .filter-button:not(.active):hover {
+            background-color: #e5e7eb;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #374151;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .page-number {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #374151;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .page-number:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .page-number.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .page-number.active:hover {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <span class="logo">AI</span>
+                    <div class="header-text">
+                        <h1>AI 求職小幫手</h1>
+                        <p>您的一站式 AI 職缺探索平台</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <div class="section-title">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h2>探索最新職缺</h2>
+                            <p>以下是從網路上自動抓取的最新 AI 相關職缺。</p>
+                        </div>
+                        <div class="update-time">
+                            <p>最後更新時間：<span id="last-update-time">載入中...</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter Section -->
+                <div class="filter-section">
+                    <div class="search-container">
+                        <input type="text" id="search-keyword" class="search-input" placeholder="搜尋職缺...">
+                        <button id="search-button" class="button button-primary">搜尋</button>
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-button active" data-status="all">全部職缺</button>
+                        <button class="filter-button" data-status="未關注">未關注</button>
+                        <button class="filter-button" data-status="已關注">已關注</button>
+                        <button class="filter-button" data-status="已投遞">已投遞</button>
+                        <button class="filter-button" data-status="不合適">不合適</button>
+                    </div>
+                    <div class="options-bottom">
+                        <div class="flex items-center space-x-4">
+                            <span class="text-sm text-gray-600">總職缺數：<span id="total-jobs">0</span></span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-600">每頁顯示：</span>
+                                <select id="items-per-page" class="text-sm border rounded px-2 py-1">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 職缺列表容器 -->
+                <div id="job-listings-container" class="jobs-grid">
+                    <!-- 職缺卡片將在這裡動態生成 -->
+                </div>
+
+                <!-- 載入中提示 -->
+                <div id="loading-spinner" class="loading-spinner hidden">
+                    <div class="spinner"></div>
+                </div>
+
+                <!-- 錯誤訊息 -->
+                <div id="error-message" class="error-message hidden">
+                    載入失敗！無法連接到您的後端 API (http://127.0.0.1:5000/api/jobs)。
+                    請確認您的 `app.py` 伺服器正在終端機中運行。
+                </div>
+
+                <!-- 分頁容器 -->
+                <div class="pagination-wrapper mt-8">
+                    <div id="pagination" class="pagination-container">
+                        <button id="prev-page" class="pagination-button">上一頁</button>
+                        <div id="page-numbers" class="page-numbers"></div>
+                        <button id="next-page" class="pagination-button">下一頁</button>
+                    </div>
+                </div>
+
+                <!-- 隱藏的總頁數 -->
+                <input type="hidden" id="total-pages" value="1">
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer style="background-color: #f8f9fa; color: #6c757d; text-align: center; padding: 1.5rem; margin-top: 2rem; border-top: 1px solid #e9ecef;">
+            <div class="container">
+                <p>© 2025 AI 求職小幫手. All rights reserved.</p>
+                <p style="font-size: 0.75rem; margin-top: 0.5rem;">資料來源：104 人力銀行</p>
+            </div>
+        </footer>
+    </div>
+
+    <script type="module" src="/static/js/main.js"></script>
+    <script type="module" src="/static/js/jobCard.js"></script>
+    <script type="module" src="/static/js/pagination.js"></script>
+</body>
+</html> 

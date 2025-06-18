@@ -9,24 +9,23 @@ Main Application & API Server
 """
 
 
-from flask import Flask, jsonify, Response, request
+from flask import Flask, jsonify, Response, request, render_template
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 import database
 import scraper
-import atexit # 用於在應用程式關閉時，優雅地關閉排程器
+import atexit
 import json
 from datetime import datetime
-import math # 导入 math 模块用于计算总页数
+import math 
 
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
-# 允許所有來源的跨域請求，這在開發階段非常方便
 CORS(app) 
 
 # 設定 JSON 編碼
-app.config['JSON_AS_ASCII'] = False  # 確保 JSON 回應中的中文不會被轉換為 Unicode
-app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'  # 設定正確的 MIME 類型和字符集
+app.config['JSON_AS_ASCII'] = False 
+app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8' 
 
 print("--- Flask app 已初始化，CORS 已設定 ---")
 
@@ -42,20 +41,25 @@ def get_jobs():
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 10, type=int)
     keyword = request.args.get('keyword', '')
-    status = request.args.get('status', '')  # 新增：获取状态参数
+    status = request.args.get('status', '')
     
+    print(f"[DEBUG app.py] /api/jobs 收到請求，參數：page={page}, limit={limit}, keyword='{keyword}', status='{status}'")
+
     jobs, total = database.get_all_jobs(page=page, limit=limit, keyword=keyword, status=status)
     
+    print(f"[DEBUG app.py] database.get_all_jobs 返回：獲取到職缺數量：{len(jobs) if jobs else 0}, 總數：{total}")
     if jobs is None:
-        return jsonify({'error': '获取职缺列表失败'}), 500
+        print("[ERROR app.py] 從資料庫獲取職缺列表失敗，返回 500 錯誤。")
+        return jsonify({'error': '獲取職缺列表失敗'}), 500
         
-    return jsonify({
+    response_data = {
         'jobs': jobs,
         'page': page,
         'limit': limit,
         'total_jobs_count': total,
         'total_pages': (total + limit - 1) // limit
-    })
+    }
+    return jsonify(response_data)
 
 @app.route('/api/jobs/<int:job_id>/status', methods=['POST'])
 def api_update_job_status(job_id):
@@ -90,6 +94,10 @@ def get_last_update():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 # --- 自動化排程設定 ---
 def scheduled_job():
