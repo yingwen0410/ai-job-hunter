@@ -7,7 +7,8 @@ Main Application & API Server
 2. 處理跨來源資源共用，允許前端網頁進行 API 請求。
 3. 使用 APScheduler 在背景中定時執行爬蟲任務，實現資料的自動化更新。
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 
 from flask import Flask, jsonify, Response, request, render_template
 from flask_cors import CORS
@@ -18,6 +19,10 @@ import atexit
 import json
 from datetime import datetime
 import math 
+import resume_parser
+from werkzeug.utils import secure_filename
+import llm_service
+
 
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
@@ -94,6 +99,107 @@ def get_last_update():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# 詳情頁面
+@app.route('/jobs/<int:job_id>')
+def job_detail(job_id):
+    job_data = None
+    try:
+        conn = database._db_instance.pool.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM jobs WHERE id = %s", (job_id,))
+        job_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"查詢職缺 {job_id} 詳情時發生錯誤: {e}")
+        return "找不到該職缺", 404
+
+    if not job_data:
+        return "找不到該職缺", 404
+    
+    # 渲染 templates/job_detail.html 並傳入職缺資料
+    return render_template('job_detail.html', job=job_data)
+
+    
+# AI 履歷匹配 
+@app.route('/api/jobs/<int:job_id>/match', methods=['POST'])
+def match_resume_with_job(job_id):
+    # 1. 驗證並解析上傳的履歷檔案
+    if 'resume' not in request.files:
+        return jsonify({'error': '請求中缺少檔案部分'}), 400
+    resume_file = request.files['resume']
+    if resume_file.filename == '':
+        return jsonify({'error': '未選擇任何檔案'}), 400
+
+    try:
+        resume_text = resume_parser.parse_resume(resume_file.stream, resume_file.filename)
+        if not resume_text:
+            return jsonify({'error': '無法從履歷中提取文字內容。'}), 500
+    except Exception as e:
+        return jsonify({'error': f'解析履歷時發生錯誤: {str(e)}'}), 500
+
+    # 2. 從資料庫獲取職缺描述
+    try:
+        # 假設 database.py 中有一個 get_job_by_id 的函式
+        # 如果沒有，我們直接在這邊查詢
+        conn = database._db_instance.pool.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT job_description FROM jobs WHERE id = %s", (job_id,))
+        job = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not job or not job['job_description']:
+            return jsonify({'error': f'在資料庫中找不到 ID 為 {job_id} 的職缺描述。'}), 404
+        job_description = job['job_description']
+    except Exception as e:
+        return jsonify({'error': f'查詢資料庫時發生錯誤: {str(e)}'}), 500
+
+    # 3. 呼叫 LLM 服務進行分析
+    print("--- 正在呼叫 LLM 進行分析 ---")
+    analysis_result = llm_service.get_match_analysis(job_description, resume_text)
+    print("--- LLM 分析完成 ---")
+
+    # 4. 回傳分析結果給前端
+    if "error" in analysis_result:
+        return jsonify(analysis_result), 500
+    
+    return jsonify(analysis_result), 200
+
+'''
+# 測試履歷解析功能的 API 端點
+@app.route('/api/resume/parse', methods=['POST'])
+def parse_resume_endpoint():
+    if 'resume' not in request.files:
+        return jsonify({'error': '請求中缺少檔案部分'}), 400
+    
+    resume_file = request.files['resume']
+    
+    if resume_file.filename == '':
+        return jsonify({'error': '未選擇任何檔案'}), 400
+
+    try:
+        filename = resume_file.filename
+        
+        resume_text = resume_parser.parse_resume(resume_file.stream, filename)
+        
+        if not resume_text:
+            return jsonify({'error': '無法從檔案中提取文字內容，可能檔案為空或格式不受支援。'}), 500
+            
+        return jsonify({
+            'message': '檔案解析成功！',
+            'filename': filename,
+            'character_count': len(resume_text),
+            'preview': resume_text[:100] + "..."
+        })
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'處理檔案時發生未知錯誤: {e}'}), 500
+'''
 
 @app.route('/')
 def index():

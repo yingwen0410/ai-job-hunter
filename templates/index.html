@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <style>
         /* Base Styles */
         body {
@@ -137,10 +136,16 @@
             box-shadow: 0 0 0 3px rgba(52, 84, 133, 0.15); /* focus:ring-2 focus:ring-[#B9D2D7] */
         }
 
+        .button,
+        .button-primary,
+        .button-secondary {
+            font-weight: 400 !important;
+            text-decoration: none !important;
+        }
+
         .button {
             padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
             border-radius: 0.5rem;
-            font-weight: 600;
             transition: all 0.2s ease;
             cursor: pointer;
             border: none;
@@ -651,10 +656,10 @@
                     </div>
                     <div class="filter-buttons">
                         <button class="filter-button active" data-status="all">全部職缺</button>
-                        <button class="filter-button" data-status="未關注">未關注</button>
-                        <button class="filter-button" data-status="已關注">已關注</button>
-                        <button class="filter-button" data-status="已投遞">已投遞</button>
-                        <button class="filter-button" data-status="不合適">不合適</button>
+                        <button class="filter-button" data-status="unfollowed">未關注</button>
+                        <button class="filter-button" data-status="followed">已關注</button>
+                        <button class="filter-button" data-status="applied">已投遞</button>
+                        <button class="filter-button" data-status="rejected">不合適</button>
                     </div>
                     <div class="options-bottom">
                         <div class="flex items-center space-x-4">

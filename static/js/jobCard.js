@@ -3,7 +3,7 @@ export function createJobCard(job) {
     const card = document.createElement('div');
     card.className = 'job-card';
     
-    // 根据来源网站设置标签样式
+    // 根據來源網站設置標籤樣式
     const sourceClass = job.source_website === '104人力銀行' ? 'source-104' : 'source-1111';
     
     card.innerHTML = `
@@ -13,39 +13,26 @@ export function createJobCard(job) {
         </div>
         <div class="job-company">${job.company}</div>
         <div class="job-details">
-            <div class="job-detail">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>${job.location}</span>
-            </div>
-            <div class="job-detail">
-                <i class="fas fa-calendar-alt"></i>
-                <span>${job.posting_date}</span>
-            </div>
-            <div class="job-detail">
-                <i class="fas fa-graduation-cap"></i>
-                <span>${job.education}</span>
-            </div>
-            <div class="job-detail">
-                <i class="fas fa-briefcase"></i>
-                <span>${job.experience}</span>
-            </div>
-            <div class="job-detail">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>${job.salary_range}</span>
-            </div>
-            <div class="job-detail">
-                <i class="fas fa-building"></i>
-                <span>${job.industry || '未提供'}</span>
-            </div>
+            <div class="job-detail"><span class="detail-icon">📍</span><span>${job.location}</span></div>
+            <div class="job-detail"><span class="detail-icon">🎓</span><span>${job.education}</span></div>
+            <div class="job-detail"><span class="detail-icon">💼</span><span>${job.experience}</span></div>
+            <div class="job-detail"><span class="detail-icon">💰</span><span>${job.salary_range}</span></div>
+            <div class="job-detail"><span class="detail-icon">🏢</span><span>${job.industry || '未提供'}</span></div>
+            <div class="job-detail"><span class="detail-icon">🗓️</span><span>${job.posting_date}</span></div>
         </div>
-        <div class="job-footer">
-            <select class="status-select" onchange="updateJobStatus('${job.job_url}', this.value)">
-                <option value="unfollowed" ${job.status === 'unfollowed' ? 'selected' : ''}>未追蹤</option>
-                <option value="followed" ${job.status === 'followed' ? 'selected' : ''}>已追蹤</option>
-                <option value="applied" ${job.status === 'applied' ? 'selected' : ''}>已應徵</option>
-                <option value="unsuitable" ${job.status === 'unsuitable' ? 'selected' : ''}>不適合</option>
-            </select>
-            <a href="${job.job_url}" target="_blank" class="view-job-btn">查看職缺</a>
+        <div class="job-card-actions" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <a href="/jobs/${job.id}" class="button button-primary" target="_blank" style="align-self: stretch; margin-bottom: 0.5rem;">✨ AI 履歷分析</a>
+            <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                <select class="status-select ${job.status ? job.status.toLowerCase() : ''}" data-job-id="${job.id}" style="flex:1; max-width: 50%;">
+                    <option value="unfollowed" ${!job.status || job.status === 'unfollowed' ? 'selected' : ''}>未追蹤</option>
+                    <option value="followed" ${job.status === 'followed' ? 'selected' : ''}>已追蹤</option>
+                    <option value="applied" ${job.status === 'applied' ? 'selected' : ''}>已應徵</option>
+                    <option value="rejected" ${job.status === 'rejected' ? 'selected' : ''}>不合適</option>
+                </select>
+                <a href="${job.job_url}" target="_blank" style="flex:1; max-width: 50%; text-align:left; color:#2563eb; background:none; border:none; box-shadow:none; font-weight:400; text-decoration:underline; display:inline-block; padding:0; margin-left:0.5rem;">
+                    <span style="font-size:1.1em;">🔗</span> 查看原始職缺
+                </a>
+            </div>
         </div>
     `;
     
@@ -69,15 +56,14 @@ const getStatusClass = (status) => {
 };
 
 // 更新職缺狀態
-export async function updateJobStatus(jobUrl, newStatus) {
+export async function updateJobStatus(jobId, newStatus) {
     try {
-        const response = await fetch('/api/jobs/status', {
-            method: 'PUT',
+        const response = await fetch(`/api/jobs/${jobId}/status`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                job_url: jobUrl,
                 status: newStatus
             })
         });

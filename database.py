@@ -1,14 +1,11 @@
 """
-資料庫存取模組 (Data Access Layer)
+資料庫存取模組 (Data Access Layer) - FINAL VERSION
 
 本模組負責處理所有與 MySQL 資料庫的互動。
 功能包括：
 1. 管理資料庫連接池，提供穩定高效的連線。
-2. 初始化資料庫，確保 'jobs' 與 'metadata' 資料表存在。
-3. 封裝所有對資料表的 CRUD 操作，並提供模組級別的函式供外部調用。
-
-採用參數化查詢以防止 SQL 注入攻擊。
-採用環境變數來管理敏感的資料庫憑證。
+2. 初始化資料庫，確保 'jobs' 資料表存在且結構完整。
+3. 封裝所有對 'jobs' 資料表的 CRUD 操作，並提供模組級別的函式供外部調用。
 """
 
 import mysql.connector
@@ -18,9 +15,14 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 
+# 載入環境變數
 load_dotenv()
 
-class _Database: # 將類別名稱改為私有，表示不應直接從外部實例化
+class _Database:
+    """
+    私有類別，管理資料庫底層連線與操作。
+    不應從外部直接實例化。
+    """
     def __init__(self):
         self.dbconfig = {
             'host': os.getenv('DB_HOST', 'localhost'),
@@ -47,12 +49,13 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
             raise
 
     def _init_table(self):
-        """初始化資料表"""
+        """初始化資料表，確保結構最新"""
         try:
             conn = self.pool.get_connection()
             cursor = conn.cursor()
-            
-            # 創建 jobs 表
+
+            # 建立 jobs 表，並新增 job_description 欄位
+            # 使用 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 以支援 emoji 和特殊字元
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS jobs (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -66,6 +69,7 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
                     source_website VARCHAR(50),
                     posting_date VARCHAR(50),
                     industry VARCHAR(255),
+                    job_description TEXT,
                     status VARCHAR(20) DEFAULT 'unfollowed',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -81,7 +85,7 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
             """)
             
             conn.commit()
-            print("資料表初始化成功。")
+            print("資料表結構初始化/驗證成功。")
         except Error as e:
             print(f"初始化資料表時發生錯誤: {e}")
             raise
@@ -99,57 +103,65 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
             ON DUPLICATE KEY UPDATE meta_value = %s
         """, (now, now))
 
-
-    def add_job(self, job_data):
-        """添加或更新職缺，並在成功時更新最後時間戳"""
+    def add_job(self, job_data: dict):
+        """
+        【重構後】使用 INSERT ... ON DUPLICATE KEY UPDATE 新增或更新職缺。
+        這種方式更簡潔、高效，且能保證資料的原子性。
+        """
         conn = None
         cursor = None
+        
+        # SQL 語句：如果 job_url 已存在，則更新指定欄位；否則，插入新的一筆。
+        # 這樣就不用先 SELECT 再決定要 INSERT 或 UPDATE，一次搞定。
+        query = """
+            INSERT INTO jobs (
+                job_url, title, company, location, experience, education,
+                salary_range, source_website, posting_date, industry, job_description
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                title = VALUES(title),
+                company = VALUES(company),
+                location = VALUES(location),
+                experience = VALUES(experience),
+                education = VALUES(education),
+                salary_range = VALUES(salary_range),
+                source_website = VALUES(source_website),
+                posting_date = VALUES(posting_date),
+                industry = VALUES(industry),
+                job_description = VALUES(job_description),
+                updated_at = CURRENT_TIMESTAMP;
+        """
+        
+        # 準備要插入/更新的資料元組 (tuple)，順序必須與 INSERT 的欄位完全對應
+        params = (
+            job_data.get('job_url'),
+            job_data.get('title'),
+            job_data.get('company'),
+            job_data.get('location'),
+            job_data.get('experience'),
+            job_data.get('education'),
+            job_data.get('salary_range'),
+            job_data.get('source_website'),
+            job_data.get('posting_date'),
+            job_data.get('industry'),
+            job_data.get('job_description')
+        )
+        
         try:
             conn = self.pool.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute(
-                "SELECT id FROM jobs WHERE job_url = %s",
-                (job_data['job_url'],)
-            )
-            
-            if cursor.fetchone():
-                # 更新現有職缺 (不更新 status 和 created_at)
-                query = """
-                    UPDATE jobs SET
-                    title = %s, company = %s, location = %s, experience = %s, education = %s,
-                    salary_range = %s, source_website = %s, posting_date = %s, industry = %s
-                    WHERE job_url = %s
-                """
-                params = (
-                    job_data['title'], job_data['company'], job_data['location'],
-                    job_data['experience'], job_data['education'], job_data['salary_range'],
-                    job_data['source_website'], job_data['posting_date'], job_data['industry'],
-                    job_data['job_url']
-                )
-            else:
-                # 新增職缺
-                query = """
-                    INSERT INTO jobs (
-                        title, company, location, experience, education, salary_range,
-                        job_url, source_website, posting_date, industry
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                params = (
-                    job_data['title'], job_data['company'], job_data['location'],
-                    job_data['experience'], job_data['education'], job_data['salary_range'],
-                    job_data['job_url'], job_data['source_website'],
-                    job_data['posting_date'], job_data['industry']
-                )
-
             cursor.execute(query, params)
             
+            # cursor.rowcount 在 INSERT 時返回 1，在 UPDATE 時返回 2，在未變動時返回 0
             if cursor.rowcount > 0:
-                self._update_last_update_time(cursor) # 更新時間戳
-                conn.commit()
-                print(f"成功處理職缺: {job_data['title']}")
-                return True
-            return False
+                action = "新增" if cursor.rowcount == 1 else "更新"
+                print(f"成功 {action} 職缺: {job_data.get('title', 'N/A')}")
+            
+            # 不論是新增還是更新，都更新最後操作時間
+            self._update_last_update_time(cursor)
+            conn.commit()
+            return True
 
         except Error as e:
             if conn:
@@ -173,8 +185,9 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
             params = []
             
             if keyword:
-                query_conditions.append("(title LIKE %s OR company LIKE %s)")
-                params.extend([f"%{keyword}%", f"%{keyword}%"])
+                # 搜尋範圍包含職稱、公司、以及新的職缺描述欄位
+                query_conditions.append("(title LIKE %s OR company LIKE %s OR job_description LIKE %s)")
+                params.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
             
             if status and status != 'all':
                 query_conditions.append("status = %s")
@@ -182,16 +195,14 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
 
             where_clause = "WHERE " + " AND ".join(query_conditions) if query_conditions else ""
             
-            # 獲取總數
-            cursor.execute(f"SELECT COUNT(*) as total FROM jobs {where_clause}", params)
+            cursor.execute(f"SELECT COUNT(*) as total FROM jobs {where_clause}", tuple(params))
             total = cursor.fetchone()['total']
 
-            # 獲取分頁資料
             offset = (page - 1) * limit
             final_query = f"SELECT * FROM jobs {where_clause} ORDER BY posting_date DESC, id DESC LIMIT %s OFFSET %s"
             params.extend([limit, offset])
             
-            cursor.execute(final_query, params)
+            cursor.execute(final_query, tuple(params))
             jobs = cursor.fetchall()
             return jobs, total
 
@@ -243,8 +254,8 @@ class _Database: # 將類別名稱改為私有，表示不應直接從外部實�
 # 建立一個全域的資料庫實例，讓整個應用程式共享
 _db_instance = _Database()
 
-# 提供外部直接呼叫的函式，這些函式會去操作唯一的 _db_instance
-def add_job(job_data):
+# 提供外部直接呼叫的函式
+def add_job(job_data: dict) -> bool:
     return _db_instance.add_job(job_data)
 
 def get_all_jobs(page=1, limit=10, keyword='', status=''):
@@ -255,3 +266,37 @@ def update_job_status(job_id, new_status):
 
 def get_last_update_time():
     return _db_instance.get_last_update_time()
+
+# 測試區塊
+if __name__ == '__main__':
+    print("\n--- 正在測試資料庫模組 ---")
+    try:
+        # 測試 add_job (新增)
+        print("\n[測試1] 新增一筆假資料...")
+        add_job({
+            'job_url': 'https://example.com/job/1',
+            'title': '測試工程師',
+            'company': '測試公司',
+            'job_description': '這是一個詳細的職務描述。'
+        })
+        
+        # 測試 add_job (更新)
+        print("\n[測試2] 更新同一筆假資料...")
+        add_job({
+            'job_url': 'https://example.com/job/1',
+            'title': '資深測試工程師',
+            'company': '測試公司',
+            'job_description': '這是更新後的詳細職務描述。'
+        })
+
+        # 測試 get_all_jobs
+        print("\n[測試3] 獲取所有職缺...")
+        jobs, total = get_all_jobs(limit=5)
+        if jobs is not None:
+            print(f"獲取到 {len(jobs)} 筆職缺，總數為 {total}。")
+            # print("第一筆職缺:", jobs[0] if jobs else "無")
+        
+        print("\n--- 資料庫模組測試完畢 ---")
+
+    except Exception as e:
+        print(f"測試過程中發生錯誤: {e}")

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>履歷上傳與匹配度分析</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; line-height: 1.6; }
+        pre { background-color: #f4f4f4; padding: 1em; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        #jobIdInput { padding: 5px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h2>上傳履歷，分析與職缺的匹配度</h2>
+    <p>選擇一個 .pdf, .docx, 或 .txt 檔案</p>
+    
+    <form id="uploadForm">
+        <div>
+            <label for="jobIdInput">請輸入要匹配的職缺 ID:</label>
+            <input type="number" id="jobIdInput" value="1" required>
+        </div>
+        <br>
+        <div>
+            <label for="resumeFile">請選擇履歷檔案:</label>
+            <input type="file" name="resume" id="resumeFile" required>
+        </div>
+        <br>
+        <button type="submit">上傳並分析</button>
+    </form>
+    
+    <h3>分析結果:</h3>
+    <pre id="result">--- 等待上傳檔案 ---</pre>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // 防止表單傳統提交
+            
+            const fileInput = document.getElementById('resumeFile');
+            const resultBox = document.getElementById('result');
+            const jobId = document.getElementById('jobIdInput').value; // 獲取使用者輸入的 Job ID
+            const formData = new FormData();
+            
+            if (!jobId) {
+                resultBox.textContent = '錯誤：請務必輸入職缺 ID。';
+                return;
+            }
+
+            if (fileInput.files.length === 0) {
+                resultBox.textContent = '錯誤：請選擇要上傳的履歷檔案。';
+                return;
+            }
+
+            // vvvvvvvv 【核心修改】 vvvvvvvv
+            // 動態組合出正確的 API URL
+            const apiUrl = `http://127.0.0.1:5000/api/jobs/${jobId}/match`;
+            // ^^^^^^^^ 【核心修改】 ^^^^^^^^
+
+            formData.append('resume', fileInput.files[0]);
+            resultBox.textContent = `正在將履歷上傳至 ${apiUrl} 並請求 AI 分析中...`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // 檢查回應是否為 JSON
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const data = await response.json();
+                    // 將回傳的 JSON 美化後顯示
+                    resultBox.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    const text = await response.text();
+                    resultBox.textContent = `錯誤：伺服器未回傳 JSON 格式。\n狀態碼: ${response.status}\n收到的內容: \n${text}`;
+                }
+
+            } catch (error) {
+                resultBox.textContent = '發生 JavaScript 執行錯誤:\n' + error;
+            }
+        });
+    </script>
+</body>
+</html>
