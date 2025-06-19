@@ -50,33 +50,211 @@ function renderAnalysisResult(data) {
     // 清理之前的內容
     aiResultDiv.innerHTML = '';
 
-    // 根據回傳的 JSON 動態生成 HTML
-    const strengthsHTML = data.strengths_analysis.map(item => 
-        `<li><strong>${item.skill}:</strong> ${item.relevance}</li>`
-    ).join('');
+    // 新增：匹配度分數 Dashboard
+    let scoreHTML = '';
+    if (typeof data.match_score === 'number') {
+        // 分數顏色與說明
+        let color = '#4f8cff';
+        let label = '普通';
+        if (data.match_score >= 80) {
+            color = '#00c853'; // 綠
+            label = '非常適合';
+        } else if (data.match_score >= 60) {
+            color = '#ffd600'; // 黃
+            label = '普通';
+        } else {
+            color = '#ff5252'; // 紅
+            label = '需加強';
+        }
+        scoreHTML = `
+        <div class="score-dashboard">
+            <div class="score-circle" style="background: linear-gradient(135deg, ${color} 60%, #e0e0e0 100%);">
+                <span class="score-value">${data.match_score}</span>
+                <span class="score-unit">/100</span>
+            </div>
+            <div class="score-label">履歷與職缺匹配度</div>
+            <div class="score-desc" style="color: ${color};">${label}</div>
+        </div>
+        <style>
+        .score-dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 8px;
+        }
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        .score-unit {
+            font-size: 1rem;
+            color: #e0e0e0;
+        }
+        .score-label {
+            font-size: 1.1rem;
+            color: #333;
+            font-weight: 500;
+        }
+        .score-desc {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        </style>
+        `;
+    }
 
-    const gapsHTML = data.skill_gaps.map(item =>
-        `<li><strong>${item.skill}</strong> <span class="tag ${item.importance === '核心要求' ? 'core' : ''}">${item.importance}</span></li>`
-    ).join('');
+    // 卡片式設計 + 圖示與色彩引導
+    const strengthsHTML = `
+        <div class="ai-card ai-card-strengths">
+            <div class="ai-card-header">
+                <span class="ai-card-icon">✅</span>
+                <span class="ai-card-title">強項分析</span>
+            </div>
+            <ul class="ai-card-list">
+                ${data.strengths_analysis.map(item => 
+                    `<li><strong>${item.skill}</strong>：${item.relevance}</li>`
+                ).join('')}
+            </ul>
+        </div>
+    `;
 
-    const questionsHTML = data.interview_questions.map(q => `<li>${q}</li>`).join('');
+    const gapsHTML = `
+        <div class="ai-card ai-card-gaps">
+            <div class="ai-card-header">
+                <span class="ai-card-icon">⚠️</span>
+                <span class="ai-card-title">技能差距</span>
+            </div>
+            <ul class="ai-card-list">
+                ${data.skill_gaps.map(item =>
+                    `<li><span class="tag ${item.importance === '核心要求' ? 'core' : 'plus'}">${item.importance === '核心要求' ? '核心' : '加分'}</span> 缺少：<span class="${item.importance === '核心要求' ? 'core-skill' : 'plus-skill'}">${item.skill}</span></li>`
+                ).join('')}
+            </ul>
+        </div>
+    `;
+
+    const questionsHTML = `
+        <div class="ai-card ai-card-questions">
+            <div class="ai-card-header">
+                <span class="ai-card-icon">❓</span>
+                <span class="ai-card-title">建議面試問題</span>
+            </div>
+            <ul class="ai-card-list">
+                ${data.interview_questions.map((q, i) => `<li><strong>Q${i+1}：</strong>${q}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+
+    const suggestionHTML = `
+        <div class="ai-card ai-card-suggestion">
+            <div class="ai-card-header">
+                <span class="ai-card-icon">💡</span>
+                <span class="ai-card-title">專家提示</span>
+            </div>
+            <div class="ai-card-suggestion-content">${data.overall_suggestion}</div>
+        </div>
+    `;
 
     const finalHTML = `
-        <div class="ai-result-section">
-            <h4>✅ 強項分析</h4>
-            <ul>${strengthsHTML}</ul>
+        ${scoreHTML}
+        <div class="ai-cards-container">
+            ${strengthsHTML}
+            ${gapsHTML}
+            ${questionsHTML}
+            ${suggestionHTML}
         </div>
-        <div class="ai-result-section">
-            <h4>⚠️ 技能差距</h4>
-            <ul>${gapsHTML}</ul>
-        </div>
-        <div class="ai-result-section">
-            <h4>❓ 建議面試問題</h4>
-            <ul>${questionsHTML}</ul>
-        </div>
-        <div class="suggestion">
-            <p><strong>💡 整體優化建議：</strong>${data.overall_suggestion}</p>
-        </div>
+        <style>
+        .ai-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .ai-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 20px 22px 16px 22px;
+            position: relative;
+        }
+        .ai-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ai-card-icon {
+            font-size: 1.5rem;
+            margin-right: 8px;
+        }
+        .ai-card-title {
+            font-size: 1.15rem;
+            font-weight: bold;
+        }
+        .ai-card-strengths .ai-card-title {
+            color: #2196f3;
+        }
+        .ai-card-gaps .ai-card-title {
+            color: #e53935;
+        }
+        .ai-card-questions .ai-card-title {
+            color: #1a237e;
+        }
+        .ai-card-suggestion {
+            background: #fffbe7;
+            border-left: 6px solid #ffe082;
+        }
+        .ai-card-suggestion .ai-card-title {
+            color: #fbc02d;
+        }
+        .ai-card-suggestion-content {
+            color: #795548;
+            font-size: 1.05rem;
+            margin-left: 2px;
+        }
+        .ai-card-list {
+            padding-left: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .tag {
+            display: inline-block;
+            font-size: 0.95em;
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-right: 6px;
+            font-weight: bold;
+        }
+        .tag.core {
+            background: #ffebee;
+            color: #e53935;
+            border: 1px solid #e53935;
+        }
+        .tag.plus {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+        .core-skill {
+            color: #e53935;
+            font-weight: bold;
+        }
+        .plus-skill {
+            color: #1976d2;
+            font-weight: bold;
+        }
+        </style>
     `;
 
     aiResultDiv.innerHTML = finalHTML;

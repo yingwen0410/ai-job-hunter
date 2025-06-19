@@ -6,7 +6,7 @@
     <title>{{ job.title }} - 職缺詳情與 AI 分析</title>
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; background-color: #f4f6fb; color: #333; margin: 0; padding: 2em; }
-        .container { display: flex; max-width: 1200px; margin: auto; gap: 2.5em; }
+        .container { display: flex; flex-direction: row; max-width: 1200px; margin: auto; gap: 2.5em; }
         .job-content { flex: 1.1; background: #fff; padding: 1.5em 1.5em 1.5em 2em; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 320px; max-width: 420px; }
         .job-content h2 { font-size: 1.5em; margin-bottom: 0.2em; }
         .job-content h4 { margin: 0.2em 0 0.8em 0; font-size: 1.1em; }
@@ -15,14 +15,28 @@
         .job-content p { margin: 0.4em 0; font-size: 1em; }
         .job-content strong { color: #345485; }
         .job-description { white-space: pre-wrap; background: #f8fafc; border: 1px solid #e0e7ef; padding: 1em; border-radius: 7px; max-height: 320px; overflow-y: auto; font-size: 0.98em; margin-top: 0.5em; }
-        .ai-panel { flex: 2; background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%); padding: 2.5em 2em; border-radius: 18px; box-shadow: 0 6px 32px 0 rgba(52,84,133,0.10), 0 1.5px 6px 0 rgba(52,84,133,0.08); display: flex; flex-direction: column; align-items: center; min-width: 350px; }
-        .ai-panel h3 { font-size: 1.45em; color: #345485; margin-bottom: 0.7em; letter-spacing: 1px; }
-        .ai-panel .ai-desc { color: #4b5563; font-size: 1.05em; margin-bottom: 1.5em; text-align: center; }
-        .ai-panel form { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(52,84,133,0.07); padding: 1.5em 2em; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; }
-        .ai-panel input[type="file"] { margin-bottom: 1.2em; font-size: 1em; }
+        .ai-panel { flex: 2; background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%); padding: 1.2em 2em 2.5em 2em; border-radius: 18px; box-shadow: 0 6px 32px 0 rgba(52,84,133,0.10), 0 1.5px 6px 0 rgba(52,84,133,0.08); display: flex; flex-direction: column; align-items: center; min-width: 350px; }
+        .ai-panel h3 { font-size: 1.45em; color: #345485; margin-bottom: 0.4em; letter-spacing: 1px; margin-top: 0; }
+        .ai-panel .ai-desc { color: #4b5563; font-size: 1.05em; margin-bottom: 1.2em; text-align: center; }
+        .ai-panel form {
+            background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(52,84,133,0.07); padding: 1.2em 2em; display: flex; flex-direction: row; align-items: center; width: 100%; margin: 0 0 24px 0;
+        }
+        .ai-panel input[type="file"] { margin-bottom: 0; font-size: 1em; margin-right: 16px; flex: 1 1 0; min-width: 0; }
         .ai-panel button[type="submit"] { background: linear-gradient(90deg, #7296A4 0%, #345485 100%); color: #fff; border: none; border-radius: 8px; padding: 0.7em 2.2em; font-size: 1.1em; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(52,84,133,0.08); transition: background 0.2s; }
         .ai-panel button[type="submit"]:hover { background: linear-gradient(90deg, #345485 0%, #7296A4 100%); }
-        .ai-result-section { margin-top: 2em; width: 100%; max-width: 480px; }
+        .ai-result-section { margin-top: 2em; width: 100%; }
+        .ai-result-scrollbox {
+            width: 90%;
+            max-width: 600px;
+            height: 480px;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 32px 20px 24px 20px;
+            margin: 10px auto 8px auto;
+        }
         .ai-result-section h4 { border-bottom: 2px solid #eee; padding-bottom: 0.5em; margin-bottom: 0.7em; }
         .tag { display: inline-block; background-color: #e9ecef; color: #495057; padding: 0.3em 0.8em; border-radius: 15px; margin: 0.2em; font-size: 0.95em; }
         .tag.core { background-color: #fff0f6; color: #d63384; }
@@ -32,7 +46,8 @@
         .hidden { display: none; }
         @media (max-width: 900px) {
             .container { flex-direction: column; gap: 2em; }
-            .ai-panel, .job-content { max-width: 100%; min-width: 0; }
+            .ai-panel { max-width: 100%; min-width: 0; }
+            .job-content { max-width: 100%; min-width: 0; }
         }
     </style>
 </head>
@@ -61,7 +76,9 @@
                 <button type="submit">開始分析</button>
             </form>
             <div class="ai-result-section">
-                <div id="aiResult"></div>
+                <div class="ai-result-scrollbox">
+                    <div id="aiResult"></div>
+                </div>
                 <div id="loader" class="loader hidden"></div>
             </div>
         </div>
