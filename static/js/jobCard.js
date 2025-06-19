@@ -7,11 +7,16 @@ export function createJobCard(job) {
     const sourceClass = job.source_website === '104人力銀行' ? 'source-104' : 'source-1111';
     
     card.innerHTML = `
-        <div class="job-header">
-            <h3 class="job-title">${job.title}</h3>
-            <span class="source-badge ${sourceClass}">${job.source_website}</span>
+        <div class="job-card-banner ${sourceClass}">
+            <div class="job-card-banner-inner">
+                <div class="job-banner-row1">
+                    <span class="job-title">${job.title}</span>
+                </div>
+                <div class="job-banner-row2">
+                    <span class="job-company">${job.company}</span>
+                </div>
+            </div>
         </div>
-        <div class="job-company">${job.company}</div>
         <div class="job-details">
             <div class="job-detail"><span class="detail-icon">📍</span><span>${job.location}</span></div>
             <div class="job-detail"><span class="detail-icon">🎓</span><span>${job.education}</span></div>
@@ -35,6 +40,14 @@ export function createJobCard(job) {
             </div>
         </div>
     `;
+    
+    // 動態設置卡片底部對齊
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    const actions = card.querySelector('.job-card-actions');
+    if (actions) {
+        actions.style.marginTop = 'auto';
+    }
     
     return card;
 }

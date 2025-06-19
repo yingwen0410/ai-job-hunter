@@ -616,6 +616,47 @@
             background-color: #2563eb;
             border-color: #2563eb;
         }
+
+        .job-card-banner {
+            width: 100%;
+            margin: 0;
+            min-height: 0;
+            height: auto;
+            padding: 0;
+            border-radius: 0.5rem 0.5rem 0 0;
+            font-size: 1.08rem;
+            font-weight: 500;
+        }
+        .job-card-banner-inner {
+            padding: 0.7rem 1.5rem 0.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1em;
+        }
+        .job-card-banner .job-title {
+            font-size: 1.22em;
+            font-weight: 700;
+            color: #1f2937;
+            white-space: normal;
+            word-break: break-all;
+            line-height: 1.25;
+        }
+        .job-card-banner .job-company {
+            font-size: calc(1.22em - 4pt);
+            font-weight: 600;
+            color: #6d6464;
+            white-space: normal;    
+            word-break: break-all;
+            line-height: 1.2;
+        }
+        .job-card-banner .source-badge {
+            font-size: 0.93em;
+            font-weight: 500;
+            border-radius: 9999px;
+            padding: 0.2em 0.9em;
+            margin-left: 0.5em;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -667,9 +708,9 @@
                             <div class="flex items-center space-x-2">
                                 <span class="text-sm text-gray-600">每頁顯示：</span>
                                 <select id="items-per-page" class="text-sm border rounded px-2 py-1">
-                                    <option value="10">10</option>
-                                    <option value="20">20</option>
-                                    <option value="50">50</option>
+                                    <option value="9">9</option>
+                                    <option value="18">18</option>
+                                    <option value="27">27</option>
                                 </select>
                             </div>
                         </div>
@@ -718,5 +759,8 @@
     <script type="module" src="/static/js/main.js"></script>
     <script type="module" src="/static/js/jobCard.js"></script>
     <script type="module" src="/static/js/pagination.js"></script>
+    <script>
+        let currentLimit = parseInt(document.getElementById('items-per-page').value) || 9;
+    </script>
 </body>
 </html> 
